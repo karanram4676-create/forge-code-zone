@@ -1,4 +1,5 @@
-import { Bell, MessageSquare, UserPlus, User, Settings, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, MessageSquare, User, Settings, LogOut } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
@@ -8,12 +9,77 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { AddFriendDialog } from "./AddFriendDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Navbar = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      fetchUnreadCounts();
+      subscribeToNotifications();
+    }
+  }, [user]);
+
+  const fetchUnreadCounts = async () => {
+    try {
+      // Fetch unread notifications
+      const { count: notifCount } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user?.id)
+        .eq("read", false);
+
+      setUnreadCount(notifCount || 0);
+
+      // Fetch unread messages
+      const { count: msgCount } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("receiver_id", user?.id)
+        .eq("read", false);
+
+      setUnreadMessages(msgCount || 0);
+    } catch (error) {
+      console.error("Error fetching unread counts:", error);
+    }
+  };
+
+  const subscribeToNotifications = () => {
+    const channel = supabase
+      .channel("navbar_updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user?.id}`,
+        },
+        () => fetchUnreadCounts()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `receiver_id=eq.${user?.id}`,
+        },
+        () => fetchUnreadCounts()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const getInitials = () => {
     if (user?.user_metadata?.username) {
@@ -33,19 +99,35 @@ export const Navbar = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="relative hover:bg-secondary">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative hover:bg-secondary"
+            onClick={() => navigate("/notifications")}
+          >
             <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 bg-primary rounded-full"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 h-4 w-4 bg-primary rounded-full text-[10px] flex items-center justify-center text-primary-foreground">
+                {unreadCount}
+              </span>
+            )}
           </Button>
           
-          <Button variant="ghost" size="icon" className="hover:bg-secondary">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative hover:bg-secondary"
+            onClick={() => navigate("/messages")}
+          >
             <MessageSquare className="h-5 w-5" />
+            {unreadMessages > 0 && (
+              <span className="absolute top-1 right-1 h-4 w-4 bg-primary rounded-full text-[10px] flex items-center justify-center text-primary-foreground">
+                {unreadMessages}
+              </span>
+            )}
           </Button>
           
-          <Button variant="outline" size="sm" className="gap-2 hover:bg-secondary">
-            <UserPlus className="h-4 w-4" />
-            Add Friend
-          </Button>
+          <AddFriendDialog onFriendAdded={fetchUnreadCounts} />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
