@@ -99,14 +99,14 @@ export const AddFriendDialog = ({ onFriendAdded }: AddFriendDialogProps) => {
         <DialogHeader>
           <DialogTitle>Add Friend</DialogTitle>
           <DialogDescription>
-            Enter the username of the person you want to add as a friend
+            Enter the exact username (not email) of the person you want to add
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <Input
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Enter username"
+            onChange={(e) => setUsername(e.target.value.trim())}
+            placeholder="Enter username (e.g., john_doe)"
             className="bg-secondary border-border"
             onKeyPress={(e) => e.key === "Enter" && handleAddFriend()}
           />
