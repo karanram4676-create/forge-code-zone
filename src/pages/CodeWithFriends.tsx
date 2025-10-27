@@ -39,7 +39,6 @@ const CodeWithFriends = () => {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user) {
@@ -47,7 +46,7 @@ const CodeWithFriends = () => {
       fetchFriendRequests();
       
       // Subscribe to friendship changes
-      const friendshipChannel = supabase
+      const channel = supabase
         .channel("friendships_changes")
         .on(
           "postgres_changes",
@@ -63,33 +62,8 @@ const CodeWithFriends = () => {
         )
         .subscribe();
 
-      // Track user presence
-      const presenceChannel = supabase
-        .channel("online_users")
-        .on("presence", { event: "sync" }, () => {
-          const state = presenceChannel.presenceState();
-          const online = new Set<string>();
-          Object.values(state).forEach((presences: any) => {
-            presences.forEach((presence: any) => {
-              if (presence.user_id) {
-                online.add(presence.user_id);
-              }
-            });
-          });
-          setOnlineUsers(online);
-        })
-        .subscribe(async (status) => {
-          if (status === "SUBSCRIBED") {
-            await presenceChannel.track({
-              user_id: user.id,
-              online_at: new Date().toISOString(),
-            });
-          }
-        });
-
       return () => {
-        supabase.removeChannel(friendshipChannel);
-        supabase.removeChannel(presenceChannel);
+        supabase.removeChannel(channel);
       };
     }
   }, [user]);
@@ -333,39 +307,28 @@ const CodeWithFriends = () => {
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {filteredFriends.map((friend) => {
-                const isOnline = onlineUsers.has(friend.friend_id);
-                const isSelected = selectedFriends.includes(friend.friend_id);
-                return (
-                  <Card 
-                    key={friend.id} 
-                    className="bg-card border-border hover:border-primary/50 transition-colors cursor-pointer"
-                    onClick={() => toggleFriend(friend.friend_id)}
-                  >
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleFriend(friend.friend_id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <Avatar>
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {friend.profiles?.username?.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="font-medium">{friend.profiles?.username}</p>
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${isOnline ? 'bg-success' : 'bg-muted-foreground/50'}`} />
-                          <span className="text-sm text-muted-foreground">
-                            {isOnline ? 'Online' : 'Offline'}
-                          </span>
-                        </div>
+              {filteredFriends.map((friend) => (
+                <Card key={friend.id} className="bg-card border-border hover:border-primary/50 transition-colors">
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <Checkbox
+                      checked={selectedFriends.includes(friend.friend_id)}
+                      onCheckedChange={() => toggleFriend(friend.friend_id)}
+                    />
+                    <Avatar>
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {friend.profiles?.username?.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="font-medium">{friend.profiles?.username}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-success" />
+                        <span className="text-sm text-muted-foreground">Online</span>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
 

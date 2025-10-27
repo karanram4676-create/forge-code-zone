@@ -35,8 +35,8 @@ export const AddFriendDialog = ({ onFriendAdded }: AddFriendDialogProps) => {
       // Find user by username
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("id, username")
-        .eq("username", username.trim())
+        .select("id")
+        .eq("username", username)
         .single();
 
       if (profileError || !profile) {
@@ -69,19 +69,12 @@ export const AddFriendDialog = ({ onFriendAdded }: AddFriendDialogProps) => {
         return;
       }
 
-      // Get current user's profile for username
-      const { data: currentUserProfile } = await supabase
-        .from("profiles")
-        .select("username")
-        .eq("id", user?.id)
-        .single();
-
       // Create notification for the recipient with friendship ID
       await supabase.from("notifications").insert({
         user_id: profile.id,
         type: "friend_request",
         title: "New Friend Request",
-        message: `${currentUserProfile?.username || 'Someone'} wants to be your friend. friendship:${friendshipData.id}`,
+        message: `You have a new friend request from ${user?.email} friendship:${friendshipData.id}`,
       });
 
       toast.success("Friend request sent!");

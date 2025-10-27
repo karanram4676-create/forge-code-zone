@@ -87,23 +87,12 @@ const Notifications = () => {
 
   const handleFriendRequest = async (notificationId: string, friendshipId: string, accept: boolean) => {
     try {
-      if (accept) {
-        // Accept the friend request
-        const { error } = await supabase
-          .from("friendships")
-          .update({ status: "accepted" })
-          .eq("id", friendshipId);
+      const { error } = await supabase
+        .from("friendships")
+        .update({ status: accept ? "accepted" : "rejected" })
+        .eq("id", friendshipId);
 
-        if (error) throw error;
-      } else {
-        // Reject by deleting the friendship
-        const { error } = await supabase
-          .from("friendships")
-          .delete()
-          .eq("id", friendshipId);
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       // Delete the notification after handling
       await deleteNotification(notificationId);
