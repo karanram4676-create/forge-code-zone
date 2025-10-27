@@ -44,29 +44,66 @@ const CodeWithFriends = () => {
     if (user) {
       fetchFriends();
       fetchFriendRequests();
+      
+      // Subscribe to friendship changes
+      const channel = supabase
+        .channel("friendships_changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "friendships",
+          },
+          () => {
+            fetchFriends();
+            fetchFriendRequests();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
   const fetchFriends = async () => {
     try {
-      const { data: friendshipsData, error } = await supabase
+      // Fetch friendships where current user is user_id
+      const { data: sentFriendships, error: error1 } = await supabase
         .from("friendships")
         .select("id, friend_id, status")
         .eq("user_id", user?.id)
         .eq("status", "accepted");
 
-      if (error) throw error;
+      if (error1) throw error1;
 
-      if (friendshipsData && friendshipsData.length > 0) {
-        const friendIds = friendshipsData.map(f => f.friend_id);
+      // Fetch friendships where current user is friend_id
+      const { data: receivedFriendships, error: error2 } = await supabase
+        .from("friendships")
+        .select("id, user_id, status")
+        .eq("friend_id", user?.id)
+        .eq("status", "accepted");
+
+      if (error2) throw error2;
+
+      // Combine both and get the friend IDs
+      const sentFriendIds = sentFriendships?.map(f => f.friend_id) || [];
+      const receivedFriendIds = receivedFriendships?.map(f => f.user_id) || [];
+      const allFriendIds = [...sentFriendIds, ...receivedFriendIds];
+
+      if (allFriendIds.length > 0) {
         const { data: profilesData } = await supabase
           .from("profiles")
           .select("id, username")
-          .in("id", friendIds);
+          .in("id", allFriendIds);
 
-        const friendsWithProfiles = friendshipsData.map(friendship => ({
-          ...friendship,
-          profiles: profilesData?.find(p => p.id === friendship.friend_id) || { username: "Unknown" },
+        const friendsWithProfiles = allFriendIds.map(friendId => ({
+          id: friendId,
+          friend_id: friendId,
+          status: "accepted",
+          profiles: profilesData?.find(p => p.id === friendId) || { username: "Unknown" },
         }));
 
         setFriends(friendsWithProfiles as any);

@@ -50,13 +50,15 @@ export const AddFriendDialog = ({ onFriendAdded }: AddFriendDialogProps) => {
       }
 
       // Create friend request
-      const { error: friendError } = await supabase
+      const { data: friendshipData, error: friendError } = await supabase
         .from("friendships")
         .insert({
           user_id: user?.id,
           friend_id: profile.id,
           status: "pending",
-        });
+        })
+        .select()
+        .single();
 
       if (friendError) {
         if (friendError.code === "23505") {
@@ -67,12 +69,12 @@ export const AddFriendDialog = ({ onFriendAdded }: AddFriendDialogProps) => {
         return;
       }
 
-      // Create notification for the recipient
+      // Create notification for the recipient with friendship ID
       await supabase.from("notifications").insert({
         user_id: profile.id,
         type: "friend_request",
         title: "New Friend Request",
-        message: `You have a new friend request from ${user?.email}`,
+        message: `You have a new friend request from ${user?.email} friendship:${friendshipData.id}`,
       });
 
       toast.success("Friend request sent!");

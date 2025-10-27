@@ -85,6 +85,24 @@ const Notifications = () => {
     }
   };
 
+  const handleFriendRequest = async (notificationId: string, friendshipId: string, accept: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("friendships")
+        .update({ status: accept ? "accepted" : "rejected" })
+        .eq("id", friendshipId);
+
+      if (error) throw error;
+
+      // Delete the notification after handling
+      await deleteNotification(notificationId);
+      
+      toast.success(accept ? "Friend request accepted" : "Friend request rejected");
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   const deleteNotification = async (id: string) => {
     try {
       const { error } = await supabase
@@ -95,7 +113,6 @@ const Notifications = () => {
       if (error) throw error;
 
       setNotifications((prev) => prev.filter((n) => n.id !== id));
-      toast.success("Notification deleted");
     } catch (error: any) {
       toast.error(error.message);
     }
@@ -150,22 +167,49 @@ const Notifications = () => {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      {!notification.read && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => markAsRead(notification.id)}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
+                      {notification.type === "friend_request" ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const friendshipId = notification.message.match(/friendship:([a-f0-9-]+)/)?.[1];
+                              if (friendshipId) handleFriendRequest(notification.id, friendshipId, true);
+                            }}
+                          >
+                            <Check className="h-4 w-4 text-green-500" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const friendshipId = notification.message.match(/friendship:([a-f0-9-]+)/)?.[1];
+                              if (friendshipId) handleFriendRequest(notification.id, friendshipId, false);
+                            }}
+                          >
+                            <X className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          {!notification.read && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => markAsRead(notification.id)}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteNotification(notification.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteNotification(notification.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
