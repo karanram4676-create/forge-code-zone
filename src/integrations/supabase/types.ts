@@ -14,6 +14,112 @@ export type Database = {
   }
   public: {
     Tables: {
+      challenge_attempts: {
+        Row: {
+          challenge_id: string
+          code: string | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          language: string
+          points_earned: number | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          code?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          language: string
+          points_earned?: number | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          code?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          language?: string
+          points_earned?: number | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_attempts_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_participants: {
+        Row: {
+          attempt_id: string
+          id: string
+          joined_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attempt_id: string
+          id?: string
+          joined_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attempt_id?: string
+          id?: string
+          joined_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_participants_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenges: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          difficulty: string
+          id: string
+          points: number
+          problem_statement: string
+          test_cases: Json | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          difficulty: string
+          id?: string
+          points: number
+          problem_statement: string
+          test_cases?: Json | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string
+          id?: string
+          points?: number
+          problem_statement?: string
+          test_cases?: Json | null
+          title?: string
+        }
+        Relationships: []
+      }
       coding_sessions: {
         Row: {
           active: boolean | null
